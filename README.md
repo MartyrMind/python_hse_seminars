@@ -8,6 +8,8 @@
 
 - [Семинар 1. Базовые типы](seminar01/README.md)
 - [Семинар 2. Управляющие конструкции](seminar02/README.md)
+- [Семинар 3. Контейнеры](seminar03/README.md)
+- [Семинар 4. Ссылки и копирование](seminar04/README.md)
 
 ## Подготовка окружения
 
@@ -33,13 +35,15 @@ uv run pytest seminar01/tasks/task01_seat_position -v
 ```bash
 uv run pytest seminar01/tasks -v
 uv run pytest seminar02/tasks -v
+uv run pytest seminar03/tasks -v
+uv run pytest seminar04/tasks -v
 ```
 
 Проверить стиль и аннотации типов:
 
 ```bash
 uv run ruff check .
-uv run mypy seminar01 seminar02
+uv run mypy seminar01 seminar02 seminar03 seminar04
 ```
 
 Заготовки намеренно выбрасывают `NotImplementedError`: до решения задач общий
