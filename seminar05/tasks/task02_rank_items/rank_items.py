@@ -6,9 +6,8 @@ def rank_items(
     items: list[Any],
     /,
     *,
-    score: Callable[[Any], int],
+    criteria: list[tuple[Callable[[Any], int], bool]],
     accept: Callable[[Any], bool] | None = None,
-    reverse: bool = True,
 ) -> list[Any]:
-    """Отобрать элементы и упорядочить их по результату score."""
+    """Отобрать элементы и упорядочить по нескольким критериям."""
     raise NotImplementedError("Implement me")

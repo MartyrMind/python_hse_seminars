@@ -11,3 +11,7 @@ class EventLog:
     def snapshot(self) -> list[str]:
         """Вернуть отдельный список уже сформированных записей."""
         raise NotImplementedError("Implement me")
+
+    def fork(self) -> EventLog:
+        """Создать независимый журнал, сохранив историю и способ настройки префикса."""
+        raise NotImplementedError("Implement me")

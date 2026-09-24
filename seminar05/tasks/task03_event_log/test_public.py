@@ -65,3 +65,52 @@ def test_empty_prefix_is_an_individual_setting() -> None:
     log.prefix = ""
     assert log.add("") == "[] "
     assert log.snapshot() == ["[] "]
+
+
+def test_fork_copies_history_and_both_logs_can_continue_independently() -> None:
+    original = EventLog(["old"])
+    original.add("before")
+    forked = original.fork()
+    assert forked is not original
+    assert forked.snapshot() == ["old", "[INFO] before"]
+    original.add("left")
+    forked.add("right")
+    assert original.snapshot() == ["old", "[INFO] before", "[INFO] left"]
+    assert forked.snapshot() == ["old", "[INFO] before", "[INFO] right"]
+
+
+def test_fork_of_shared_prefix_still_follows_class_setting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = EventLog()
+    forked = original.fork()
+    monkeypatch.setattr(EventLog, "prefix", "DEBUG")
+    assert original.add("a") == "[DEBUG] a"
+    assert forked.add("b") == "[DEBUG] b"
+    original.prefix = "LOCAL"
+    assert forked.add("c") == "[DEBUG] c"
+
+
+def test_fork_keeps_personal_prefix_even_when_equal_to_class_setting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = EventLog()
+    original.prefix = "INFO"
+    forked = original.fork()
+    monkeypatch.setattr(EventLog, "prefix", "DEBUG")
+    assert original.add("a") == "[INFO] a"
+    assert forked.add("b") == "[INFO] b"
+    forked.prefix = "FORK"
+    assert original.add("c") == "[INFO] c"
+    assert forked.add("d") == "[FORK] d"
+
+
+def test_fork_of_fork_preserves_empty_personal_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = EventLog()
+    original.prefix = ""
+    forked = original.fork().fork()
+    monkeypatch.setattr(EventLog, "prefix", "ERROR")
+    assert forked.add("") == "[] "
+    assert original.snapshot() == []

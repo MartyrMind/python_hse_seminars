@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from typing import Any
 
 from seminar05.tasks.task05_task_queue.task_queue import TaskQueue
@@ -7,12 +6,15 @@ from seminar05.tasks.task05_task_queue.task_queue import TaskQueue
 def test_submit_is_deferred_and_run_preserves_order_and_none_results() -> None:
     queue = TaskQueue()
     events: list[str] = []
-    submit: Callable[..., object] = queue.submit
-    assert submit(events.append, "one") is None
+    ticket = queue.submit(events.append, "one")
+    assert ticket.ready is False
+    assert ticket.value is None
     queue.submit(events.append, "two")
     queue.submit(len, events)
     assert events == []
     assert queue.run_all() == [None, None, 2]
+    assert ticket.ready is True
+    assert ticket.value is None
     assert events == ["one", "two"]
     assert queue.run_all() == []
 
@@ -87,3 +89,104 @@ def test_queues_and_repeated_runs_are_independent() -> None:
     second.submit(str, 3)
     assert first.run_all() == ["2"]
     assert second.run_all() == ["3"]
+
+
+def test_result_can_be_used_in_later_positional_and_keyword_arguments() -> None:
+    def add(x: int, *, y: int) -> int:
+        return x + y
+
+    queue = TaskQueue()
+    first = queue.submit(int, "7")
+    second = queue.submit(add, first, y=first)
+    third = queue.submit(str, second)
+    assert first is not second and second is not third
+    assert [first.ready, second.ready, third.ready] == [False, False, False]
+    assert queue.run_all() == [7, 14, "14"]
+    assert [first.value, second.value, third.value] == [7, 14, "14"]
+    assert [first.ready, second.ready, third.ready] == [True, True, True]
+
+
+def test_none_result_is_ready_and_can_be_passed_on() -> None:
+    events: list[int] = []
+    queue = TaskQueue()
+    first = queue.submit(events.append, 1)
+    second = queue.submit(str, first)
+    assert queue.run_all() == [None, "None"]
+    assert first.ready is True and first.value is None
+    assert second.value == "None"
+
+
+def test_result_is_ready_before_the_next_callback_runs() -> None:
+    queue = TaskQueue()
+    first = queue.submit(int, "7")
+
+    def observe() -> tuple[bool, int, bool]:
+        return first.ready, first.value, second.ready
+
+    second = queue.submit(observe)
+    assert queue.run_all() == [7, (True, 7, False)]
+    assert second.ready is True
+
+
+def test_result_from_previous_run_preserves_identity_and_current_mutable_value() -> None:
+    queue = TaskQueue()
+    first = queue.submit(list)
+    results = queue.run_all()
+    assert first.value is results[0]
+    first.value.append(7)
+    second = queue.submit(len, first)
+    assert queue.run_all() == [1]
+    assert first.value == [7] and second.value == 1
+
+
+def test_result_of_new_task_stays_pending_until_next_run() -> None:
+    queue = TaskQueue()
+    earlier = queue.submit(int, "4")
+
+    def schedule() -> Any:
+        return queue.submit(str, earlier)
+
+    scheduled = queue.submit(schedule)
+    results = queue.run_all()
+    new_ticket = scheduled.value
+    assert results[0] == 4
+    assert results[1] is new_ticket
+    assert scheduled.ready is True
+    assert new_ticket.ready is False and new_ticket.value is None
+    assert queue.run_all() == ["4"]
+    assert new_ticket.ready is True and new_ticket.value == "4"
+
+
+def test_binding_does_not_replace_saved_result_objects_with_their_values() -> None:
+    queue = TaskQueue()
+    first = queue.submit(int, "5")
+    options = {"x": first}
+
+    def record(**kwargs: Any) -> dict[str, Any]:
+        return kwargs
+
+    second = queue.submit(record, **options)
+    assert queue.run_all() == [5, {"x": 5}]
+    assert options["x"] is first
+    assert second.value == {"x": 5}
+
+
+def test_result_substitution_happens_only_once() -> None:
+    queue = TaskQueue()
+
+    def schedule() -> Any:
+        return queue.submit(str, 42)
+
+    scheduled = queue.submit(schedule)
+
+    def observe(positional: Any, *, named: Any) -> str:
+        assert positional is scheduled.value
+        assert named is scheduled.value
+        assert positional.ready is False
+        return "observed"
+
+    observed = queue.submit(observe, scheduled, named=scheduled)
+    results = queue.run_all()
+    assert results[0] is scheduled.value
+    assert results[1] == observed.value == "observed"
+    assert queue.run_all() == ["42"]
