@@ -1,5 +1,4 @@
 from collections.abc import Iterator
-from typing import Any
 
 import pytest
 
@@ -49,20 +48,6 @@ def test_multiple_objects_keep_independent_fields_and_all_registrations() -> Non
     first.timeout = 99
     assert (second.name, second.timeout, second.attempts) == ("same", 10, 1)
     assert registrations == ["same", "same"]
-
-
-def test_new_feature_joins_the_cooperative_chain() -> None:
-    class Prioritized(Job):
-        def __init__(self, *, priority: int, **kwargs: Any) -> None:
-            super().__init__(**kwargs)
-            self.priority = priority
-
-    class ExtendedJob(Timed, Prioritized, Retried):
-        pass
-
-    job = ExtendedJob(name="urgent", timeout=2, attempts=4, priority=7)
-    assert (job.name, job.timeout, job.attempts, job.priority) == ("urgent", 2, 4, 7)
-    assert registrations == ["urgent"]
 
 
 def test_keyword_argument_order_does_not_matter() -> None:

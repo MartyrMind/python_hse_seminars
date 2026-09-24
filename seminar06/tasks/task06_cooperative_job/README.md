@@ -1,76 +1,28 @@
 # Задача 6. cooperative_job — 10/10
 
-Задание `Job` хранит имя. Наследник `Timed` добавляет ограничение времени,
-а `Retried` — число попыток. Нужно объединить эти возможности в одном объекте.
-
-Реализуйте конструкторы трёх классов:
-
-```python
-Job(*, name, **kwargs)
-Timed(*, timeout, **kwargs)
-Retried(*, attempts, **kwargs)
-```
-
-Классы, объединяющие возможности, уже объявлены:
-
-```python
-class ReliableJob(Timed, Retried):
-    pass
-
-
-class ReverseJob(Retried, Timed):
-    pass
-```
-
-## Требования
-
-- `Job` сохраняет `name`, `Timed` — `timeout`, `Retried` — `attempts`;
-- каждый конструктор принимает свои именованные параметры и передаёт остальные
-  дальше через `super()`;
-- конструктор `Job` вызывает готовую функцию `register_job(name)` ровно один раз;
-- каждый объект регистрируется отдельно, даже если имена совпадают;
-- `Timed` и `Retried` работают как по отдельности, так и в обеих комбинациях;
-- классы `ReliableJob` и `ReverseJob` остаются пустыми;
-- прямые вызовы вроде `Job.__init__(self, ...)` запрещены;
-- добавление ещё одного наследника `Job`, который соблюдает эти правила,
-  не требует изменения существующих классов.
-
-Функция `register_job` и список `registrations` уже написаны. Менять их и
-очищать журнал из конструкторов нельзя. Параметры корректны: имя — строка,
-ограничение времени и число попыток — положительные целые. Лишних аргументов
-в тестах нет; последнему `object.__init__` передаётся пустой набор аргументов.
-
-## Примеры
-
-```python
-registrations.clear()  # начать пример с пустого журнала
-
-job = ReliableJob(name="download", timeout=5, attempts=3)
-(job.name, job.timeout, job.attempts)  # ("download", 5, 3)
-registrations  # ["download"]
-
-other = ReverseJob(name="upload", timeout=8, attempts=2)
-(other.name, other.timeout, other.attempts)  # ("upload", 8, 2)
-registrations  # ["download", "upload"]
-```
+`Job` хранит имя задания. `Timed` добавляет ограничение времени, `Retried` —
+число попыток. Реализуйте эти классы так, чтобы возможности работали отдельно
+и вместе, при любом из двух порядков наследования.
 
 ```python
 Timed(name="timer", timeout=5).timeout  # 5
 Retried(name="retry", attempts=3).attempts  # 3
-Job(name="plain").name  # "plain"
+
+a = ReliableJob(name="download", timeout=5, attempts=3)
+b = ReverseJob(name="upload", timeout=8, attempts=2)
+
+(a.name, a.timeout, a.attempts)  # ("download", 5, 3)
+(b.name, b.timeout, b.attempts)  # ("upload", 8, 2)
 ```
 
-Перед решением рассмотрите такой вариант конструктора `Timed`:
+Классы `ReliableJob(Timed, Retried)` и `ReverseJob(Retried, Timed)` уже объявлены
+и остаются пустыми. Базовые классы не должны зависеть от конкретного сочетания
+возможностей. Каждый из трёх базовых классов инициализирует только своё поле.
+Сигнатуры конструкторов выбирайте самостоятельно.
 
-```python
-def __init__(self, *, timeout, **kwargs):
-    Job.__init__(self, **kwargs)
-    self.timeout = timeout
-```
-
-Почему он подходит отдельному `Timed`, но не обеспечивает создание
-`ReliableJob`? Выпишите MRO обоих комбинирующих классов и проследите путь
-параметров `name`, `timeout` и `attempts`.
+При каждом создании объекта конструктор `Job` должен один раз вызвать готовую
+функцию `register_job(name)`. Менять эту функцию или очищать журнал из классов
+нельзя. Все параметры корректны; проверка значений не требуется.
 
 ## Проверка
 

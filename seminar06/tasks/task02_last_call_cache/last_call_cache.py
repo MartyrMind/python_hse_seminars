@@ -3,8 +3,5 @@ from typing import Any
 
 
 class LastCallCache:
-    def __init__(self, func: Callable[..., Any]) -> None:
-        raise NotImplementedError("Implement me")
-
-    def __call__(self, /, *args: Any, **kwargs: Any) -> Any:
+    def __init__(self, func: Callable[[int], Any]) -> None:
         raise NotImplementedError("Implement me")
