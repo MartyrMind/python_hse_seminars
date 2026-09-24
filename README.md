@@ -10,6 +10,8 @@
 - [Семинар 2. Управляющие конструкции](seminar02/README.md)
 - [Семинар 3. Контейнеры](seminar03/README.md)
 - [Семинар 4. Ссылки и копирование](seminar04/README.md)
+- [Семинар 5. Функции и первые классы](seminar05/README.md)
+- [Семинар 6. Классы и специальные методы](seminar06/README.md)
 
 ## Подготовка окружения
 
@@ -37,13 +39,15 @@ uv run pytest seminar01/tasks -v
 uv run pytest seminar02/tasks -v
 uv run pytest seminar03/tasks -v
 uv run pytest seminar04/tasks -v
+uv run pytest seminar05/tasks -v
+uv run pytest seminar06/tasks -v
 ```
 
 Проверить стиль и аннотации типов:
 
 ```bash
 uv run ruff check .
-uv run mypy seminar01 seminar02 seminar03 seminar04
+uv run mypy seminar01 seminar02 seminar03 seminar04 seminar05 seminar06
 ```
 
 Заготовки намеренно выбрасывают `NotImplementedError`: до решения задач общий
