@@ -18,8 +18,8 @@ def test_version_one_rows_are_normalized_in_order() -> None:
     ]
     assert len(recorded) == 2
     assert [warning.category for warning in recorded] == [DeprecationWarning] * 2
-    assert "1" in str(recorded[0].message)
-    assert "3" in str(recorded[1].message)
+    assert str(recorded[0].message).startswith("Строка 1:")
+    assert str(recorded[1].message).startswith("Строка 3:")
     assert rows == [StockRow("ручка", 2, 1), StockRow("карандаш", 3, 2), StockRow("ластик", 1, 1)]
     assert normalized is not rows
 
@@ -45,6 +45,17 @@ def test_every_legacy_row_is_reported_even_under_external_ignore_filter() -> Non
     assert [str(warning.message) for warning in recorded] != ["", ""]
 
 
+def test_normal_mode_overrides_external_error_filter_without_leaking_warnings() -> None:
+    with warnings.catch_warnings(record=True) as external:
+        warnings.simplefilter("error", DeprecationWarning)
+        normalized, recorded = normalize_rows([StockRow("ручка", 2, 1)])
+
+    assert normalized == [StockRow("ручка", 2, 2)]
+    assert len(recorded) == 1
+    assert recorded[0].category is DeprecationWarning
+    assert external == []
+
+
 def test_strict_mode_raises_first_deprecation_warning() -> None:
     rows = [StockRow("новый", 5, 2), StockRow("старый", 2, 1), StockRow("ещё", 3, 1)]
 
@@ -53,7 +64,7 @@ def test_strict_mode_raises_first_deprecation_warning() -> None:
         with pytest.raises(DeprecationWarning) as caught:
             normalize_rows(rows, strict=True)
 
-    assert "2" in str(caught.value)
+    assert str(caught.value).startswith("Строка 2:")
     assert rows[1].version == 1
 
 

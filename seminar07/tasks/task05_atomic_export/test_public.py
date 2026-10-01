@@ -73,6 +73,7 @@ def test_allowed_body_errors_are_suppressed_until_cumulative_limit(tmp_path: Pat
     with as_manager(export) as report:
         report.write("незавершённый 2")
         raise second
+    assert report.closed
     assert target.read_text(encoding="utf-8") == "успешный"
     assert export.errors[0] is first
     assert export.errors[1] is second
@@ -83,6 +84,7 @@ def test_allowed_body_errors_are_suppressed_until_cumulative_limit(tmp_path: Pat
             raise third
 
     assert caught.value is third
+    assert report.closed
     assert target.read_text(encoding="utf-8") == "успешный"
     assert export.errors == [first, second]
     assert_no_temporary_files(tmp_path, target)
@@ -99,6 +101,7 @@ def test_disallowed_error_does_not_spend_budget(tmp_path: Path) -> None:
             raise failure
 
     assert caught.value is failure
+    assert report.closed
     assert export.errors == []
     assert not target.exists()
 
@@ -106,6 +109,7 @@ def test_disallowed_error_does_not_spend_budget(tmp_path: Path) -> None:
         report.write("ещё черновик")
         raise ValueError("допустимый сбой")
 
+    assert report.closed
     assert len(export.errors) == 1
     assert not target.exists()
     assert_no_temporary_files(tmp_path, target)
@@ -122,6 +126,7 @@ def test_process_control_error_is_not_suppressed(tmp_path: Path, failure: BaseEx
             raise failure
 
     assert caught.value is failure
+    assert report.closed
     assert export.errors == []
     assert not target.exists()
     assert_no_temporary_files(tmp_path, target)
@@ -135,10 +140,11 @@ def test_zero_and_negative_limits(tmp_path: Path) -> None:
     export = AtomicExport(target, allowed=(ValueError,), limit=0)
     failure = ValueError("лимит ноль")
     with pytest.raises(ValueError) as caught:
-        with as_manager(export):
+        with as_manager(export) as report:
             raise failure
 
     assert caught.value is failure
+    assert report.closed
     assert export.errors == []
     assert not target.exists()
     assert_no_temporary_files(tmp_path, target)
@@ -157,20 +163,30 @@ def test_replace_failure_keeps_old_report_and_does_not_spend_budget(
         assert Path(dest) == target
         raise failure
 
-    monkeypatch.setattr(export_module.os, "replace", fail_replace)
-
-    with pytest.raises(PermissionError) as caught:
-        with as_manager(export) as report:
-            report.write("новый")
+    with monkeypatch.context() as patch:
+        patch.setattr(export_module.os, "replace", fail_replace)
+        with pytest.raises(PermissionError) as caught:
+            with as_manager(export) as report:
+                report.write("новый")
 
     assert caught.value is failure
     assert report.closed
     assert target.read_text(encoding="utf-8") == "старый"
     assert export.errors == []
+
+    tolerated = OSError("ошибка построения следующего отчёта")
+    with as_manager(export) as report:
+        report.write("черновик")
+        raise tolerated
+    assert report.closed
+    assert export.errors == [tolerated]
+    assert target.read_text(encoding="utf-8") == "старый"
     assert_no_temporary_files(tmp_path, target)
 
 
 class CloseFailure:
+    """Освобождает настоящий файл, затем имитирует ошибку его закрытия."""
+
     def __init__(self, wrapped: TextIO, error: BaseException) -> None:
         self.wrapped = wrapped
         self.error = error
@@ -203,17 +219,26 @@ def test_close_failure_alone_propagates_and_keeps_old_report(
     target = tmp_path / "report.txt"
     target.write_text("старый", encoding="utf-8")
     failure = OSError("закрытие")
-    install_close_failure(monkeypatch, failure)
     export = AtomicExport(target, allowed=(OSError,), limit=1)
 
-    with pytest.raises(OSError) as caught:
-        with as_manager(export) as report:
-            report.write("новый")
+    with monkeypatch.context() as patch:
+        install_close_failure(patch, failure)
+        with pytest.raises(OSError) as caught:
+            with as_manager(export) as report:
+                report.write("новый")
 
     assert caught.value is failure
     assert report.closed
     assert target.read_text(encoding="utf-8") == "старый"
     assert export.errors == []
+
+    tolerated = OSError("ошибка построения следующего отчёта")
+    with as_manager(export) as report:
+        report.write("черновик")
+        raise tolerated
+    assert report.closed
+    assert export.errors == [tolerated]
+    assert target.read_text(encoding="utf-8") == "старый"
     assert_no_temporary_files(tmp_path, target)
 
 
@@ -233,6 +258,7 @@ def test_body_and_close_errors_are_both_kept_in_exception_group(
             raise body_error
 
     assert caught.value.exceptions == (body_error, close_error)
+    assert report.closed
     assert export.errors == []
     assert target.read_text(encoding="utf-8") == "старый"
     assert_no_temporary_files(tmp_path, target)
@@ -248,11 +274,12 @@ def test_control_error_and_close_error_use_base_exception_group(
     export = AtomicExport(target, allowed=(Exception,), limit=1)
 
     with pytest.raises(BaseExceptionGroup) as caught:
-        with as_manager(export):
+        with as_manager(export) as report:
             raise body_error
 
     assert not isinstance(caught.value, ExceptionGroup)
     assert caught.value.exceptions == (body_error, close_error)
+    assert report.closed
     assert export.errors == []
     assert not target.exists()
     assert_no_temporary_files(tmp_path, target)

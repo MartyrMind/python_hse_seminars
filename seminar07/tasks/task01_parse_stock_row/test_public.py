@@ -25,3 +25,10 @@ from seminar07.tasks.task01_parse_stock_row.parse_stock_row import parse_stock_r
 )
 def test_parse_stock_row(raw: str, expected: tuple[str, int] | None) -> None:
     assert parse_stock_row(raw) == expected
+
+
+def test_parsing_does_not_print(capsys: pytest.CaptureFixture[str]) -> None:
+    parse_stock_row("ручка;2")
+    parse_stock_row("ручка;не число")
+
+    assert capsys.readouterr() == ("", "")

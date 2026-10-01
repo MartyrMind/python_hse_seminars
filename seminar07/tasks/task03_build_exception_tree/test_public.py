@@ -74,6 +74,21 @@ def test_suppressed_context_is_hidden_even_without_cause() -> None:
     assert node.children == []
 
 
+def test_raise_from_none_hides_real_context() -> None:
+    try:
+        raise ValueError("исходная")
+    except ValueError:
+        try:
+            raise RuntimeError("новая") from None
+        except RuntimeError as error:
+            assert error.__context__ is not None
+            assert error.__cause__ is None
+            assert error.__suppress_context__
+            node = build_exception_tree([error]).children[0][1]
+
+    assert node.children == []
+
+
 def test_group_members_come_before_groups_own_cause() -> None:
     member = ValueError("в группе")
     group = ExceptionGroup("группа", [member])
@@ -85,6 +100,24 @@ def test_group_members_come_before_groups_own_cause() -> None:
     assert [(kind, child.error) for kind, child in node.children] == [
         ("member", member),
         ("cause", cause),
+    ]
+
+
+def test_base_exception_group_in_cause_chain_is_expanded() -> None:
+    control = KeyboardInterrupt()
+    ordinary = ValueError("ошибка")
+    group = BaseExceptionGroup("группа", [control, ordinary])
+    outer = RuntimeError("снаружи")
+    outer.__cause__ = group
+
+    node = build_exception_tree([outer]).children[0][1]
+    group_node = node.children[0][1]
+
+    assert node.children[0][0] == "cause"
+    assert group_node.error is group
+    assert [(kind, child.error) for kind, child in group_node.children] == [
+        ("member", control),
+        ("member", ordinary),
     ]
 
 
@@ -111,6 +144,19 @@ def test_each_node_gets_its_own_traceback_snapshot() -> None:
         assert [frame.name for frame in original.frames][-1] == "fail_origin"
         assert wrapper.frames == list(traceback.extract_tb(error.__traceback__))
         assert original.frames == list(traceback.extract_tb(original.error.__traceback__))
+
+
+def test_frame_summaries_survive_removing_original_traceback() -> None:
+    failure = ValueError("ошибка")
+    try:
+        raise failure
+    except ValueError:
+        node = build_exception_tree([failure]).children[0][1]
+
+    failure.__traceback__ = None
+    assert node.frames
+    assert node.frames[-1].name == "test_frame_summaries_survive_removing_original_traceback"
+    assert all(isinstance(frame, traceback.FrameSummary) for frame in node.frames)
 
 
 def test_unraised_error_has_no_frames() -> None:

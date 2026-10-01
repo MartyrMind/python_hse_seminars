@@ -180,7 +180,31 @@ def test_early_end_raises_without_saving() -> None:
     assert calls == ["primary"]
 
 
-def test_nonpositive_page_count_calls_nothing() -> None:
+def test_early_end_after_switch_to_reserve_reports_reserve() -> None:
+    calls: list[tuple[str, str | None]] = []
+
+    def primary(cursor: str | None) -> Page:
+        calls.append(("primary", cursor))
+        raise TimeoutError("основной узел не ответил")
+
+    def reserve(cursor: str | None) -> Page:
+        calls.append(("reserve", cursor))
+        return Page(["ручка;2"], None)
+
+    with pytest.raises(PageLoadError) as caught:
+        load_pages(2, "start", primary, reserve, lambda rows: calls.append(("save", None)))
+
+    assert caught.value.__cause__ is None
+    assert (caught.value.source, caught.value.page_number, caught.value.cursor) == (
+        "reserve",
+        1,
+        "start",
+    )
+    assert calls == [("primary", "start"), ("reserve", "start")]
+
+
+@pytest.mark.parametrize("n", [0, -2])
+def test_nonpositive_page_count_calls_nothing(n: int) -> None:
     calls: list[str] = []
 
     def fetch(cursor: str | None) -> Page:
@@ -188,9 +212,27 @@ def test_nonpositive_page_count_calls_nothing() -> None:
         return Page([], None)
 
     with pytest.raises(ValueError):
-        load_pages(0, None, fetch, fetch, lambda rows: calls.append("save"))
+        load_pages(n, None, fetch, fetch, lambda rows: calls.append("save"))
 
     assert calls == []
+
+
+def test_last_page_may_have_a_next_cursor() -> None:
+    calls: list[str] = []
+
+    def primary(cursor: str | None) -> Page:
+        assert cursor == "start"
+        calls.append("primary")
+        return Page(["ручка;2"], "unused")
+
+    def save_all(rows: list[str]) -> None:
+        assert rows == ["ручка;2"]
+        calls.append("save")
+
+    assert load_pages(1, "start", primary, lambda cursor: Page([], None), save_all) == [
+        "ручка;2"
+    ]
+    assert calls == ["primary", "save"]
 
 
 def test_saver_error_propagates_unchanged() -> None:
