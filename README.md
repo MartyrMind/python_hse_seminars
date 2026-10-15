@@ -1,8 +1,7 @@
 # Семинары по Python
 
 Практические задачи к курсу Python для направления «Прикладная математика и
-информатика». Для каждой задачи доступны условие, заготовка функции и публичные
-автоматические тесты.
+информатика». У каждой задачи есть условие, заготовка и тесты.
 
 ## Материалы
 
@@ -16,6 +15,7 @@
 - [Семинар 8. Протоколы и интерфейсы](seminar08/README.md)
 - [Семинар 9. Итераторы и генераторы](seminar09/README.md)
 - [Семинар 10. Collections, heapq и itertools](seminar10/README.md)
+- [Семинар 11. Замыкания и декораторы](seminar11/README.md)
 
 ## Подготовка окружения
 
@@ -27,36 +27,27 @@ uv sync --extra test --extra lint
 
 ## Работа с задачей
 
-Например, чтобы запустить тесты первой задачи первого семинара:
+Откройте README выбранной задачи, реализуйте функции и методы в заготовке
+и запустите тесты. Например, для первой задачи семинара 11:
 
 ```bash
-uv run pytest seminar01/tasks/task01_seat_position -v
+uv run pytest seminar11/tasks/task01_trimmed -v
 ```
 
-Откройте `seminar01/tasks/task01_seat_position/README.md`, реализуйте функцию в
-`seat_position.py` и повторяйте запуск, пока все тесты не станут зелёными.
-
-Все тесты выбранного семинара запускаются так:
+Все тесты семинара:
 
 ```bash
-uv run pytest seminar01/tasks -v
-uv run pytest seminar02/tasks -v
-uv run pytest seminar03/tasks -v
-uv run pytest seminar04/tasks -v
-uv run pytest seminar05/tasks -v
-uv run pytest seminar06/tasks -v
-uv run pytest seminar07/tasks -v
-uv run pytest seminar08/tasks -v
-uv run pytest seminar09/tasks -v
-uv run pytest seminar10/tasks -v
+uv run pytest seminar11/tasks -v
 ```
 
-Проверить стиль и аннотации типов:
+Для другого семинара замените `seminar11` на его каталог.
+
+Проверка стиля и типов для выбранного семинара:
 
 ```bash
-uv run ruff check .
-uv run mypy seminar01 seminar02 seminar03 seminar04 seminar05 seminar06 seminar07 seminar08 seminar09 seminar10
+uv run ruff check seminar11
+uv run mypy seminar11
 ```
 
-Заготовки намеренно выбрасывают `NotImplementedError`: до решения задач общий
-запуск тестов должен завершаться с ошибками.
+Заготовки вызывают `NotImplementedError`. До решения задачи её тесты падают;
+после решения они должны проходить. Тесты менять не нужно.
