@@ -16,6 +16,7 @@
 - [Семинар 9. Итераторы и генераторы](seminar09/README.md)
 - [Семинар 10. Collections, heapq и itertools](seminar10/README.md)
 - [Семинар 11. Замыкания и декораторы](seminar11/README.md)
+- [Семинар 12. NumPy и Pandas: месяц маленькой кофейни](seminar12/README.md)
 
 ## Подготовка окружения
 
@@ -23,6 +24,12 @@
 
 ```bash
 uv sync --extra test --extra lint
+```
+
+Для ноутбука семинара 12 дополнительно нужен набор `notebook`:
+
+```bash
+uv sync --extra notebook --extra test --extra lint
 ```
 
 ## Работа с задачей
